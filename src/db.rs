@@ -2,6 +2,10 @@ use std::collections::HashMap;
 
 use rusqlite::Connection;
 
+pub struct DataBase {
+    conn: Connection,
+}
+
 #[derive(Debug)]
 pub struct Track {
     pub id: String,
@@ -36,11 +40,12 @@ impl Track {
     }
 }
 
-pub fn init() -> Connection {
-    let conn = Connection::open_in_memory().expect("Couldn't Open DB Connection");
+impl DataBase {
+    pub fn init() -> Self {
+        let conn = Connection::open("library.db").expect("Couldn't Open DB Connection");
 
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS tracks (
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tracks (
             id TEXT PRIMARY KEY,
             artist TEXT,
             title TEXT,
@@ -53,62 +58,59 @@ pub fn init() -> Connection {
             directory TEXT,
             last_modified TEXT
         )",
-        (),
-    )
-    .expect("Couldn't Create Table track");
+            (),
+        )
+        .expect("Couldn't Create Table track");
 
-    conn
-}
+        Self { conn }
+    }
 
-pub fn add_track_to_db(conn: &Connection, track: Track) -> () {
-    conn.execute(
-        "INSERT INTO tracks VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-        (
-            &track.id,
-            &track.artist,
-            &track.title,
-            &track.album,
-            &track.genre,
-            &track.file,
-            &track.duration,
-            &track.name,
-            &track.ext,
-            &track.directory,
-        ),
-    )
-    .expect("An Error Occured while inserting record in Table 'track'");
-}
+    pub fn add_track_to_db(&self, track: Track) {
+        self.conn
+            .execute(
+                "INSERT INTO tracks VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                (
+                    &track.id,
+                    &track.artist,
+                    &track.title,
+                    &track.album,
+                    &track.genre,
+                    &track.file,
+                    &track.duration,
+                    &track.name,
+                    &track.ext,
+                    &track.directory,
+                    &track.last_modified,
+                ),
+            )
+            .expect("An Error Occured while inserting record in Table 'track'");
+    }
 
-pub fn get_track_by_id(conn: &Connection, id: i32) {
-    let mut stmt = conn
-        .prepare("SELECT * FROM tracks WHERE id = ?")
-        .expect("Could not prepare SQL Statement");
-    let rows = stmt
-        .query_map([id], |row| {
-            Ok(Track {
-                id: row.get(0).expect("Couldn't fetch value from row"),
-                artist: row.get(1).expect("Couldn't fetch value from row"),
-                title: row.get(2).expect("Couldn't fetch value from row"),
-                album: row.get(3).expect("Couldn't fetch value from row"),
-                genre: row.get(4).expect("Couldn't fetch value from row"),
-                file: row.get(5).expect("Couldn't fetch value from row"),
-                duration: row.get(6).expect("Couldn't fetch value from row"),
-                name: row.get(7).expect("Couldn't fetch value from row"),
-                ext: row.get(8).expect("Couldn't fetch value from row"),
-                directory: row.get(9).expect("Couldn't fetch value from row"),
-                last_modified: row.get(10).expect("Coudn't fetch value from row"),
-            })
-        })
-        .expect("Error while running SQL Statement");
+    pub fn get_track_by_id(&self, id: i32) -> Option<Vec<Track>> {
+        let res = self.conn.prepare("SELECT * FROM tracks WHERE id = ?");
 
-    for row in rows {
-        println!("Tracks: {:?}", row.unwrap());
+        if let Ok(mut stmt) = res {
+            let rows = stmt
+                .query_map([id], |row| {
+                    // @todo Fix this mess
+                    Ok(Track {
+                        id: row.get(0).expect("Couldn't fetch value from row"),
+                        artist: row.get(1).expect("Couldn't fetch value from row"),
+                        title: row.get(2).expect("Couldn't fetch value from row"),
+                        album: row.get(3).expect("Couldn't fetch value from row"),
+                        genre: row.get(4).expect("Couldn't fetch value from row"),
+                        file: row.get(5).expect("Couldn't fetch value from row"),
+                        duration: row.get(6).expect("Couldn't fetch value from row"),
+                        name: row.get(7).expect("Couldn't fetch value from row"),
+                        ext: row.get(8).expect("Couldn't fetch value from row"),
+                        directory: row.get(9).expect("Couldn't fetch value from row"),
+                        last_modified: row.get(10).expect("Coudn't fetch value from row"),
+                    })
+                })
+                .expect("Error while running SQL Statement");
+
+            return Some(rows.flatten().collect());
+        }
+        None
     }
 }
-
-// fn get_value_or_err(item: Result<T, E>) -> String {
-//     match item {
-//         Ok(value) => value.to_string(),
-//         Err(err) => err.to_string(),
-//     }
-// }
