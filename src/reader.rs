@@ -64,7 +64,10 @@ fn read_id3(file_path: &String) -> HashMap<String, String> {
         let mut value: String = String::from("");
         match arr[0] {
             "0" => {
-                value = get_id3_frame(&tag, arr[1]).unwrap_or_else(|| String::from(""));
+                value = get_id3_frame(&tag, arr[1])
+                    .unwrap_or_else(|| String::from(""))
+                    .trim_matches('\0')
+                    .to_string();
             }
             "1" => {
                 if let Some(item) = tag.get(arr[1]).and_then(|frame| frame.content().text()) {

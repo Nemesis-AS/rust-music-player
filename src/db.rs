@@ -81,11 +81,10 @@ impl DataBase {
         Self { conn }
     }
 
-    // @todo Do not add track if it already exists
     pub fn add_track_to_db(&self, track: Track) {
         self.conn
             .execute(
-                "INSERT INTO tracks VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                "INSERT OR IGNORE INTO tracks VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 (
                     &track.id,
                     &track.artist,
