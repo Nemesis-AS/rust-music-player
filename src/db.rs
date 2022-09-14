@@ -113,14 +113,13 @@ impl DataBase {
         output
     }
 
-    // @todo Add None Case
     pub fn get_track_by_id(&self, id: String) -> Option<Track> {
         let res = self.conn.prepare("SELECT * FROM tracks WHERE id = ?");
 
         if let Ok(mut stmt) = res {
             let row = stmt
                 .query_row([id], |row| {
-                    Ok(Track {
+                    Ok(Some(Track {
                         id: row.get(0).expect("Couldn't fetch value from row"),
                         artist: row.get(1).expect("Couldn't fetch value from row"),
                         title: row.get(2).expect("Couldn't fetch value from row"),
@@ -132,11 +131,11 @@ impl DataBase {
                         ext: row.get(8).expect("Couldn't fetch value from row"),
                         directory: row.get(9).expect("Couldn't fetch value from row"),
                         last_modified: row.get(10).expect("Coudn't fetch value from row"),
-                    })
+                    }))
                 })
-                .unwrap_or_else(|_err| Track::blank());
+                .unwrap_or(None);
 
-            return Some(row);
+            return row;
         }
         None
     }
