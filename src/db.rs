@@ -38,6 +38,22 @@ impl Track {
             last_modified: hashmap.get("last_modified").unwrap_or(&null_str).clone(),
         }
     }
+
+    pub fn blank() -> Self {
+        Self {
+            id: String::from(""),
+            artist: String::from(""),
+            title: String::from(""),
+            album: String::from(""),
+            genre: String::from(""),
+            file: String::from(""),
+            duration: 0,
+            name: String::from(""),
+            ext: String::from(""),
+            directory: String::from(""),
+            last_modified: String::from(""),
+        }
+    }
 }
 
 impl DataBase {
@@ -65,6 +81,7 @@ impl DataBase {
         Self { conn }
     }
 
+    // @todo Do not add track if it already exists
     pub fn add_track_to_db(&self, track: Track) {
         self.conn
             .execute(
@@ -86,13 +103,24 @@ impl DataBase {
             .expect("An Error Occured while inserting record in Table 'track'");
     }
 
-    pub fn get_track_by_id(&self, id: i32) -> Option<Vec<Track>> {
+    pub fn get_all_ids(&self) -> Vec<String> {
+        let mut stmt = self.conn.prepare("SELECT * FROM tracks").unwrap();
+        let output: Vec<String> = stmt
+            .query_map([], |row| Ok(row.get(0).unwrap()))
+            .unwrap()
+            .flatten()
+            .collect();
+
+        output
+    }
+
+    // @todo Add None Case
+    pub fn get_track_by_id(&self, id: String) -> Option<Track> {
         let res = self.conn.prepare("SELECT * FROM tracks WHERE id = ?");
 
         if let Ok(mut stmt) = res {
-            let rows = stmt
-                .query_map([id], |row| {
-                    // @todo Fix this mess
+            let row = stmt
+                .query_row([id], |row| {
                     Ok(Track {
                         id: row.get(0).expect("Couldn't fetch value from row"),
                         artist: row.get(1).expect("Couldn't fetch value from row"),
@@ -107,9 +135,9 @@ impl DataBase {
                         last_modified: row.get(10).expect("Coudn't fetch value from row"),
                     })
                 })
-                .expect("Error while running SQL Statement");
+                .unwrap_or_else(|_err| Track::blank());
 
-            return Some(rows.flatten().collect());
+            return Some(row);
         }
         None
     }

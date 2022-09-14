@@ -21,6 +21,7 @@ fn main() -> Result<(), Error> {
 
     scan_dir(&String::from(PATH), &db);
 
+    check_tracks(&db);
     Ok(())
 }
 
@@ -66,4 +67,13 @@ fn read_metadata(file_path: String, directory: &str) -> Track {
     let track: Track = Track::from_hashmap(metadata);
     // println!("{:?}", track);
     track
+}
+
+fn check_tracks(db: &DataBase) {
+    let ids = db.get_all_ids();
+
+    for id in ids {
+        let track = db.get_track_by_id(id).unwrap_or_else(Track::blank);
+        println!("{:?}", track);
+    }
 }
